@@ -1,7 +1,3 @@
-// =======================
-// API - /api/generate-brief.js (ATUALIZADO)
-// =======================
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,56 +13,68 @@ IMPORTANTE:
 - NÃO use linguagem genérica
 - NÃO invente contexto
 - FOQUE em execução
+- Use obrigatoriamente as informações recebidas para preencher os campos
+- Traduza o briefing em entregáveis claros por área
 
 OBJETIVO:
-Transformar o briefing em entregáveis claros, acionáveis e prontos para execução
+Transformar o briefing em entregáveis claros, acionáveis e prontos para execução.
 
 DADOS DO BRIEFING:
 
 CLIENTE:
 Nome: ${f.clienteNome || ''}
 Segmento: ${f.clienteSegmento || ''}
-Produto: ${f.clienteProduto || ''}
+Produto/serviço: ${f.clienteProduto || ''}
 Site: ${f.clienteSite || ''}
 Redes sociais: ${f.clienteRedes || ''}
 
-PÚBLICO:
+PÚBLICO-ALVO:
 Idade: ${f.publicoIdade || ''}
 Gênero: ${f.publicoGenero || ''}
-Interesses: ${f.publicoInteresses || ''}
+Interesses/comportamentos: ${f.publicoInteresses || ''}
+Persona: ${f.publicoPersona || ''}
 Cidade/Estado: ${f.publicoLocalizacao || ''}
 
 CAMPANHA:
 Nome: ${f.campanhaNome || ''}
-Descrição: ${f.campanhaDescricao || ''}
-O que será comunicado: ${f.campanhaMensagem || ''}
-Oferta ativa: ${f.campanhaOferta || ''}
-Problemas passados a evitar: ${f.campanhaProblemas || ''}
-Expectativa de entrega final: ${f.campanhaExpectativa || ''}
-Objetivos: ${(f.campanhaObjetivos || []).join(', ')}
+Descrição da campanha: ${f.campanhaDescricao || ''}
+O que exatamente será comunicado: ${f.campanhaMensagem || ''}
+Existe oferta ativa: ${f.campanhaOferta || ''}
+Problemas passados que devemos evitar: ${f.campanhaProblemas || ''}
+O que você espera receber no final deste briefing: ${f.campanhaExpectativa || ''}
+Objetivos: ${Array.isArray(f.campanhaObjetivos) ? f.campanhaObjetivos.join(', ') : (f.campanhaObjetivos || '')}
+KPIs desejados: ${f.campanhaKPIs || ''}
 
 CONTEXTO CRIATIVO:
-Tom: ${f.contextoTom || ''}
+Tom da comunicação: ${f.contextoTom || ''}
+Plataformas selecionadas: ${Array.isArray(f.plataformas) ? f.plataformas.join(', ') : (f.plataformas || '')}
+Formatos selecionados: ${Array.isArray(f.formatos) ? f.formatos.join(', ') : (f.formatos || '')}
 Referências: ${f.contextoReferencias || ''}
 Restrições: ${f.contextoRestricoes || ''}
-Materiais existentes (links): ${f.contextoMateriais || ''}
+Existe material já pronto? Links com conteúdo hospedado: ${f.contextoMateriais || ''}
 
-VERBA E TIMING:
+VERBA & TIMING:
 Verba: ${f.verba || ''}
 Período: ${f.periodo || ''}
 Prazo: ${f.prazo || ''}
+Observações adicionais: ${f.observacoes || ''}
 
 INSTRUÇÕES DE EXECUÇÃO:
-1. Use TODOS os dados fornecidos
-2. Transforme tudo em entregáveis práticos
-3. Conecte cada output ao que foi preenchido
-4. Se houver "expectativa de entrega", priorize isso
-5. Se houver "problemas passados", evite-os explicitamente
-6. Estruture como checklist e instruções operacionais
-7. Seja claro, direto e aplicável
+1. Use TODOS os dados preenchidos.
+2. Converta o briefing em entregáveis claros por área.
+3. Seja objetivo, prático e operacional.
+4. Evite análises estratégicas profundas.
+5. Não use linguagem genérica.
+6. Use listas e descrições claras de execução.
+7. Sempre considere os campos preenchidos, especialmente cliente, público, campanha, plataformas, formatos, verba, prazo, restrições, problemas passados, expectativa de entrega e materiais existentes.
+8. Se algum dado estiver ausente, faça suposições mínimas e neutras, sem inventar contexto complexo.
+9. Se houver expectativa de entrega final, priorize essa expectativa no detalhamento dos entregáveis.
+10. Se houver problemas passados, deixe explícito nas restrições e observações como evitá-los.
+11. Escreva como um briefing interno de execução.
+12. Todos os valores devem ser texto, sem arrays, sem markdown e sem chaves extras.
 
 SAÍDA:
-Retorne SOMENTE JSON válido com esta estrutura:
+Retorne SOMENTE JSON válido com esta estrutura exata:
 
 {
   "exec": {
@@ -98,7 +106,7 @@ Retorne SOMENTE JSON válido com esta estrutura:
         messages: [
           {
             role: 'system',
-            content: 'Responda somente com JSON válido. Não use markdown. Não escreva fora do JSON.'
+            content: 'Responda somente com JSON válido. Não use markdown. Não escreva nada fora do JSON.'
           },
           {
             role: 'user',
@@ -123,7 +131,6 @@ Retorne SOMENTE JSON válido com esta estrutura:
     }
 
     let parsed;
-
     try {
       parsed = JSON.parse(content);
     } catch (err) {
@@ -133,38 +140,46 @@ Retorne SOMENTE JSON válido com esta estrutura:
       });
     }
 
-    return res.status(200).json(parsed);
+    const requiredTop = ['exec', 'midia'];
+    const missingTop = requiredTop.filter((key) => !parsed[key] || typeof parsed[key] !== 'object');
 
+    if (missingTop.length) {
+      return res.status(500).json({
+        error: `Blocos ausentes na resposta: ${missingTop.join(', ')}`
+      });
+    }
+
+    const execFields = [
+      'resumo_operacional',
+      'escopo_da_campanha',
+      'objetivos_convertidos_em_entregaveis',
+      'diretrizes_gerais',
+      'restricoes_e_observacoes'
+    ];
+
+    const midiaFields = [
+      'estrutura_de_campanhas',
+      'plataformas_e_objetivos',
+      'segmentacoes_previstas',
+      'formatos_de_anuncios',
+      'kpis_e_metricas'
+    ];
+
+    function normalizeSection(obj, keys) {
+      const out = {};
+      for (const key of keys) {
+        out[key] = typeof obj?.[key] === 'string' ? obj[key] : '';
+      }
+      return out;
+    }
+
+    parsed.exec = normalizeSection(parsed.exec, execFields);
+    parsed.midia = normalizeSection(parsed.midia, midiaFields);
+
+    return res.status(200).json(parsed);
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({
+      error: e.message || 'Erro interno do servidor'
+    });
   }
 }
-
-// =======================
-// FRONT - CAMPOS ATUALIZADOS (RESUMO)
-// =======================
-
-/*
-ORDEM DOS BLOCOS:
-cliente > publico > campanha > contexto criativo > verba
-
-NOVOS CAMPOS ADICIONADOS:
-
-cliente:
-- clienteSite
-- clienteRedes
-
-publico:
-- publicoLocalizacao (cidade + estado)
-
-campanha:
-- campanhaDescricao (min 300 chars)
-- campanhaMensagem
-- campanhaOferta
-- campanhaProblemas (problemas passados a evitar)
-- campanhaExpectativa (o que espera receber: ex criativos, plano mídia etc)
-
-contexto criativo:
-- contextoMateriais (links drive/dropbox etc)
-
-*/
