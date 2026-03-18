@@ -1,3 +1,7 @@
+// =======================
+// API - /api/generate-brief.js (ATUALIZADO)
+// =======================
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -6,67 +10,80 @@ export default async function handler(req, res) {
   try {
     const f = req.body || {};
 
-    const prompt = `Você é estrategista sênior de agência de publicidade. Gere um briefing profissional completo para os times abaixo com base nos dados fornecidos.
+    const prompt = `Você é um profissional de operações de marketing responsável por transformar um briefing em entregáveis claros para áreas executiva e de mídia.
 
-DADOS:
-Cliente: ${f.clienteNome || '—'} | Segmento: ${f.clienteSegmento || '—'} | Produto: ${f.clienteProduto || '—'} | URLs: ${f.clienteURLs || '—'}
-Campanha: ${f.campanhaNome || '—'} | Objetivos: ${(f.campanhaObjetivos || []).join(', ') || '—'} | KPIs: ${f.campanhaKPIs || '—'}
-Descrição: ${f.campanhaDescricao || '—'}
-Público: ${f.publicoIdade || '—'}, ${f.publicoGenero || '—'} | Interesses: ${f.publicoInteresses || '—'} | Persona: ${f.publicoPersona || '—'}
-Tom: ${f.contextoTom || '—'} | Plataformas: ${(f.plataformas || []).join(', ') || '—'} | Formatos: ${(f.formatos || []).join(', ') || '—'}
-Referências: ${f.contextoReferencias || '—'} | Restrições: ${f.contextoRestricoes || '—'}
-Verba: ${f.verba || '—'} | Período: ${f.periodo || '—'} | Prazo: ${f.prazo || '—'} | Obs: ${f.observacoes || '—'}
+IMPORTANTE:
+- NÃO faça análise estratégica profunda
+- NÃO use linguagem genérica
+- NÃO invente contexto
+- FOQUE em execução
 
-Retorne SOMENTE JSON válido, sem markdown, sem comentários e sem texto fora do JSON, exatamente com esta estrutura:
+OBJETIVO:
+Transformar o briefing em entregáveis claros, acionáveis e prontos para execução
+
+DADOS DO BRIEFING:
+
+CLIENTE:
+Nome: ${f.clienteNome || ''}
+Segmento: ${f.clienteSegmento || ''}
+Produto: ${f.clienteProduto || ''}
+Site: ${f.clienteSite || ''}
+Redes sociais: ${f.clienteRedes || ''}
+
+PÚBLICO:
+Idade: ${f.publicoIdade || ''}
+Gênero: ${f.publicoGenero || ''}
+Interesses: ${f.publicoInteresses || ''}
+Cidade/Estado: ${f.publicoLocalizacao || ''}
+
+CAMPANHA:
+Nome: ${f.campanhaNome || ''}
+Descrição: ${f.campanhaDescricao || ''}
+O que será comunicado: ${f.campanhaMensagem || ''}
+Oferta ativa: ${f.campanhaOferta || ''}
+Problemas passados a evitar: ${f.campanhaProblemas || ''}
+Expectativa de entrega final: ${f.campanhaExpectativa || ''}
+Objetivos: ${(f.campanhaObjetivos || []).join(', ')}
+
+CONTEXTO CRIATIVO:
+Tom: ${f.contextoTom || ''}
+Referências: ${f.contextoReferencias || ''}
+Restrições: ${f.contextoRestricoes || ''}
+Materiais existentes (links): ${f.contextoMateriais || ''}
+
+VERBA E TIMING:
+Verba: ${f.verba || ''}
+Período: ${f.periodo || ''}
+Prazo: ${f.prazo || ''}
+
+INSTRUÇÕES DE EXECUÇÃO:
+1. Use TODOS os dados fornecidos
+2. Transforme tudo em entregáveis práticos
+3. Conecte cada output ao que foi preenchido
+4. Se houver "expectativa de entrega", priorize isso
+5. Se houver "problemas passados", evite-os explicitamente
+6. Estruture como checklist e instruções operacionais
+7. Seja claro, direto e aplicável
+
+SAÍDA:
+Retorne SOMENTE JSON válido com esta estrutura:
 
 {
   "exec": {
-    "visao_geral": "",
-    "desafio": "",
-    "objetivos_estrategicos": "",
-    "mensagem_central": "",
-    "entregaveis": ""
-  },
-  "social": {
-    "objetivo_conteudo": "",
-    "pilares": "",
-    "tom_voz": "",
-    "formatos_sugeridos": "",
-    "referencias_criativas": "",
-    "metricas": ""
+    "resumo_operacional": "",
+    "escopo_da_campanha": "",
+    "objetivos_convertidos_em_entregaveis": "",
+    "diretrizes_gerais": "",
+    "restricoes_e_observacoes": ""
   },
   "midia": {
-    "objetivo_midia": "",
-    "plataformas_priorizadas": "",
-    "publico_segmentacao": "",
-    "estrategia_bid": "",
-    "budget_sugerido": "",
-    "kpis": ""
-  },
-  "av": {
-    "conceito_audiovisual": "",
-    "formatos_tecnicos": "",
-    "referencias_visuais": "",
-    "roteiro_sugestao": "",
-    "especificacoes": ""
-  },
-  "plan": {
-    "contexto_mercado": "",
-    "insight_central": "",
-    "posicionamento": "",
-    "arquitetura_mensagem": "",
-    "cronograma_sugerido": ""
+    "estrutura_de_campanhas": "",
+    "plataformas_e_objetivos": "",
+    "segmentacoes_previstas": "",
+    "formatos_de_anuncios": "",
+    "kpis_e_metricas": ""
   }
-}
-
-Regras:
-- Preencha todos os campos.
-- Todos os valores devem ser texto.
-- Não use arrays.
-- Não use markdown.
-- Não inclua nenhuma chave extra.
-- Português profissional de agência.
-- Seja específico, acionável e objetivo.`;
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -76,13 +93,12 @@ Regras:
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        response_format: { type: 'json_object' },
         temperature: 0.2,
+        response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
-            content:
-              'Responda somente com JSON válido, sem markdown, sem comentários e sem texto fora do JSON.'
+            content: 'Responda somente com JSON válido. Não use markdown. Não escreva fora do JSON.'
           },
           {
             role: 'user',
@@ -101,33 +117,54 @@ Regras:
     }
 
     const content = data?.choices?.[0]?.message?.content;
+
     if (!content) {
-      return res.status(500).json({ error: 'Resposta vazia da OpenAI' });
+      return res.status(500).json({ error: 'Resposta vazia da IA' });
     }
 
     let parsed;
+
     try {
       parsed = JSON.parse(content);
-    } catch (e) {
+    } catch (err) {
       return res.status(500).json({
-        error: 'A resposta da IA não veio em JSON válido.',
+        error: 'JSON inválido retornado pela IA',
         raw: content
       });
     }
 
-    const required = ['exec', 'social', 'midia', 'av', 'plan'];
-    const missing = required.filter((key) => !parsed[key] || typeof parsed[key] !== 'object');
-
-    if (missing.length) {
-      return res.status(500).json({
-        error: `A resposta da IA veio incompleta. Blocos ausentes: ${missing.join(', ')}`
-      });
-    }
-
     return res.status(200).json(parsed);
-  } catch (error) {
-    return res.status(500).json({
-      error: error.message || 'Erro interno do servidor'
-    });
+
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
+
+// =======================
+// FRONT - CAMPOS ATUALIZADOS (RESUMO)
+// =======================
+
+/*
+ORDEM DOS BLOCOS:
+cliente > publico > campanha > contexto criativo > verba
+
+NOVOS CAMPOS ADICIONADOS:
+
+cliente:
+- clienteSite
+- clienteRedes
+
+publico:
+- publicoLocalizacao (cidade + estado)
+
+campanha:
+- campanhaDescricao (min 300 chars)
+- campanhaMensagem
+- campanhaOferta
+- campanhaProblemas (problemas passados a evitar)
+- campanhaExpectativa (o que espera receber: ex criativos, plano mídia etc)
+
+contexto criativo:
+- contextoMateriais (links drive/dropbox etc)
+
+*/
