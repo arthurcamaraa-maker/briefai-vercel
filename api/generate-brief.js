@@ -1,123 +1,133 @@
-module.exports = async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Allow', 'POST, OPTIONS');
-    return res.status(204).end();
-  }
-
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS');
-    return res.status(405).json({ message: 'Método não permitido. Use POST.' });
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({
-      message: 'OPENAI_API_KEY não configurada no Vercel.'
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const body = typeof req.body === 'string'
-      ? JSON.parse(req.body || '{}')
-      : (req.body || {});
+    const f = req.body || {};
 
-    const form = body.form || {};
-    const prompt = String(body.prompt || '').trim();
-    const model = body.model || 'gpt-4o-mini';
+    const prompt = `Você é estrategista sênior de agência de publicidade. Gere um briefing profissional completo para os times abaixo com base nos dados fornecidos.
 
-    if (!prompt) {
-      return res.status(400).json({ message: 'Prompt ausente.' });
-    }
+DADOS:
+Cliente: ${f.clienteNome || '—'} | Segmento: ${f.clienteSegmento || '—'} | Produto: ${f.clienteProduto || '—'} | URLs: ${f.clienteURLs || '—'}
+Campanha: ${f.campanhaNome || '—'} | Objetivos: ${(f.campanhaObjetivos || []).join(', ') || '—'} | KPIs: ${f.campanhaKPIs || '—'}
+Descrição: ${f.campanhaDescricao || '—'}
+Público: ${f.publicoIdade || '—'}, ${f.publicoGenero || '—'} | Interesses: ${f.publicoInteresses || '—'} | Persona: ${f.publicoPersona || '—'}
+Tom: ${f.contextoTom || '—'} | Plataformas: ${(f.plataformas || []).join(', ') || '—'} | Formatos: ${(f.formatos || []).join(', ') || '—'}
+Referências: ${f.contextoReferencias || '—'} | Restrições: ${f.contextoRestricoes || '—'}
+Verba: ${f.verba || '—'} | Período: ${f.periodo || '—'} | Prazo: ${f.prazo || '—'} | Obs: ${f.observacoes || '—'}
 
-    const systemPrompt = [
-      'Você é um estrategista sênior de agência de publicidade.',
-      'Sua tarefa é gerar um briefing estruturado para uso profissional.',
-      'Responda APENAS com JSON válido.',
-      'Não use markdown.',
-      'Não use crases.',
-      'Não escreva comentários.',
-      'Não escreva nenhum texto antes ou depois do JSON.',
-      'Todos os valores devem ser strings simples e válidas em JSON.',
-      'Evite aspas desnecessárias dentro do texto.',
-      'Se precisar listar itens, use hífens dentro da própria string.',
-      'O objeto final deve conter exatamente estas chaves:',
-      'resumo_executivo, objetivos, publico_alvo, estrategia_canais, plano_de_midia, kpis, recomendacoes'
-    ].join(' ');
+Retorne SOMENTE JSON válido, sem markdown, sem comentários e sem texto fora do JSON, exatamente com esta estrutura:
 
-    const userPrompt = `${prompt}\n\nIMPORTANTE: devolva exatamente um objeto JSON com estas 7 chaves obrigatórias: resumo_executivo, objetivos, publico_alvo, estrategia_canais, plano_de_midia, kpis, recomendacoes. Todos os campos devem ser texto.`;
+{
+  "exec": {
+    "visao_geral": "",
+    "desafio": "",
+    "objetivos_estrategicos": "",
+    "mensagem_central": "",
+    "entregaveis": ""
+  },
+  "social": {
+    "objetivo_conteudo": "",
+    "pilares": "",
+    "tom_voz": "",
+    "formatos_sugeridos": "",
+    "referencias_criativas": "",
+    "metricas": ""
+  },
+  "midia": {
+    "objetivo_midia": "",
+    "plataformas_priorizadas": "",
+    "publico_segmentacao": "",
+    "estrategia_bid": "",
+    "budget_sugerido": "",
+    "kpis": ""
+  },
+  "av": {
+    "conceito_audiovisual": "",
+    "formatos_tecnicos": "",
+    "referencias_visuais": "",
+    "roteiro_sugestao": "",
+    "especificacoes": ""
+  },
+  "plan": {
+    "contexto_mercado": "",
+    "insight_central": "",
+    "posicionamento": "",
+    "arquitetura_mensagem": "",
+    "cronograma_sugerido": ""
+  }
+}
 
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
+Regras:
+- Preencha todos os campos.
+- Todos os valores devem ser texto.
+- Não use arrays.
+- Não use markdown.
+- Não inclua nenhuma chave extra.
+- Português profissional de agência.
+- Seja específico, acionável e objetivo.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 2200,
+        model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
+        temperature: 0.2,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          {
+            role: 'system',
+            content:
+              'Responda somente com JSON válido, sem markdown, sem comentários e sem texto fora do JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
         ]
       })
     });
 
-    const data = await upstream.json().catch(() => ({}));
+    const data = await response.json();
 
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({
-        message: data?.error?.message || 'Falha ao chamar a OpenAI.',
-        details: data?.error || null
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data?.error?.message || 'Erro na OpenAI'
       });
     }
 
     const content = data?.choices?.[0]?.message?.content;
-
-    if (!content || typeof content !== 'string') {
-      return res.status(502).json({
-        message: 'A OpenAI respondeu sem conteúdo utilizável.',
-        raw: data
-      });
+    if (!content) {
+      return res.status(500).json({ error: 'Resposta vazia da OpenAI' });
     }
 
-    let output;
+    let parsed;
     try {
-      output = JSON.parse(content);
-    } catch (err) {
-      return res.status(502).json({
-        message: 'A OpenAI retornou JSON inválido.',
-        raw: content,
-        parse_error: err?.message || 'Falha ao interpretar JSON.'
+      parsed = JSON.parse(content);
+    } catch (e) {
+      return res.status(500).json({
+        error: 'A resposta da IA não veio em JSON válido.',
+        raw: content
       });
     }
 
-    const normalizedOutput = {
-      resumo_executivo: String(output?.resumo_executivo || ''),
-      objetivos: String(output?.objetivos || ''),
-      publico_alvo: String(output?.publico_alvo || ''),
-      estrategia_canais: String(output?.estrategia_canais || ''),
-      plano_de_midia: String(output?.plano_de_midia || ''),
-      kpis: String(output?.kpis || ''),
-      recomendacoes: String(output?.recomendacoes || '')
-    };
+    const required = ['exec', 'social', 'midia', 'av', 'plan'];
+    const missing = required.filter((key) => !parsed[key] || typeof parsed[key] !== 'object');
 
-    return res.status(200).json({
-      ok: true,
-      provider: 'openai',
-      model,
-      output: normalizedOutput,
-      meta: {
-        cliente: form.clienteNome || null,
-        campanha: form.campanhaNome || null
-      }
-    });
+    if (missing.length) {
+      return res.status(500).json({
+        error: `A resposta da IA veio incompleta. Blocos ausentes: ${missing.join(', ')}`
+      });
+    }
+
+    return res.status(200).json(parsed);
   } catch (error) {
     return res.status(500).json({
-      message: error?.message || 'Erro interno ao gerar briefing.'
+      error: error.message || 'Erro interno do servidor'
     });
   }
-};
+}
