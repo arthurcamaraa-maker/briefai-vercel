@@ -19,16 +19,34 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const body = typeof req.body === 'string'
+      ? JSON.parse(req.body || '{}')
+      : (req.body || {});
+
     const form = body.form || {};
-    const prompt = body.prompt || '';
+    const prompt = String(body.prompt || '').trim();
     const model = body.model || 'gpt-4o-mini';
 
-    if (!prompt.trim()) {
+    if (!prompt) {
       return res.status(400).json({ message: 'Prompt ausente.' });
     }
 
-    const systemPrompt = 'Você é um estrategista sênior de agência de publicidade. Responda sempre com JSON válido, sem markdown e sem texto fora do JSON.';
+    const systemPrompt = [
+      'Você é um estrategista sênior de agência de publicidade.',
+      'Sua tarefa é gerar um briefing estruturado para uso profissional.',
+      'Responda APENAS com JSON válido.',
+      'Não use markdown.',
+      'Não use crases.',
+      'Não escreva comentários.',
+      'Não escreva nenhum texto antes ou depois do JSON.',
+      'Todos os valores devem ser strings simples e válidas em JSON.',
+      'Evite aspas desnecessárias dentro do texto.',
+      'Se precisar listar itens, use hífens dentro da própria string.',
+      'O objeto final deve conter exatamente estas chaves:',
+      'resumo_executivo, objetivos, publico_alvo, estrategia_canais, plano_de_midia, kpis, recomendacoes'
+    ].join(' ');
+
+    const userPrompt = `${prompt}\n\nIMPORTANTE: devolva exatamente um objeto JSON com estas 7 chaves obrigatórias: resumo_executivo, objetivos, publico_alvo, estrategia_canais, plano_de_midia, kpis, recomendacoes. Todos os campos devem ser texto.`;
 
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -38,12 +56,12 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model,
-        temperature: 0.7,
+        temperature: 0.2,
         max_tokens: 2200,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
+          { role: 'user', content: userPrompt }
         ]
       })
     });
@@ -70,21 +88,28 @@ module.exports = async function handler(req, res) {
     try {
       output = JSON.parse(content);
     } catch (err) {
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) {
-        return res.status(502).json({
-          message: 'A OpenAI não retornou JSON válido.',
-          content
-        });
-      }
-      output = JSON.parse(match[0]);
+      return res.status(502).json({
+        message: 'A OpenAI retornou JSON inválido.',
+        raw: content,
+        parse_error: err?.message || 'Falha ao interpretar JSON.'
+      });
     }
+
+    const normalizedOutput = {
+      resumo_executivo: String(output?.resumo_executivo || ''),
+      objetivos: String(output?.objetivos || ''),
+      publico_alvo: String(output?.publico_alvo || ''),
+      estrategia_canais: String(output?.estrategia_canais || ''),
+      plano_de_midia: String(output?.plano_de_midia || ''),
+      kpis: String(output?.kpis || ''),
+      recomendacoes: String(output?.recomendacoes || '')
+    };
 
     return res.status(200).json({
       ok: true,
       provider: 'openai',
       model,
-      output,
+      output: normalizedOutput,
       meta: {
         cliente: form.clienteNome || null,
         campanha: form.campanhaNome || null
